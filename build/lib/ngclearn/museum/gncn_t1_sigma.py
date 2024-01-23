@@ -14,39 +14,40 @@ from ngclearn.engine.proj_graph import ProjectionGraph
 
 from ngclearn.utils.io_utils import parse_simulation_info
 
-class GNCN_t1:
+class GNCN_t1_Sigma:
     """
     Structure for constructing the model proposed in:
 
-    Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual
-    cortex: a functional interpretation of some extra-classical receptive-field
-    effects." Nature neuroscience 2.1 (1999): 79-87.
+    Friston, Karl. "Hierarchical models in the brain." PLoS Computational
+    Biology 4.11 (2008): e1000211.
 
-    Note this model includes the Laplacian prior to induce some level of sparsity
-    in the latent activities. This model, under the NGC computational framework,
-    is referred to as the GNCN-t1/Rao, according to the naming convention in
+    Note this model includes a Laplacian prior to induce some level of sparsity
+    in the latent activities.
+    This model, under the NGC computational framework, is referred to as
+    the GNCN-t1-Sigma/Friston, according to the naming convention in
     (Ororbia & Kifer 2022).
 
     | Node Name Structure:
     | z3 -(z3-mu2)-> mu2 ;e2; z2 -(z2-mu1)-> mu1 ;e1; z1 -(z1-mu0-)-> mu0 ;e0; z0
+    | e2 -> e2 * Sigma2; e1 -> e1 * Sigma1  // Precision weighting
 
     Args:
-        args: a Config dictionary containing necessary meta-parameters for the GNCN-t1
+        args: a Config dictionary containing necessary meta-parameters for the GNCN-t1-Sigma
 
     | DEFINITION NOTE:
     | args should contain values for the following:
     | * batch_size - the fixed batch-size to be fed into this model
-    | * z_top_dim - # of latent variables in layer z3 (top-most layer)
-    | * z_dim - # of latent variables in layers z1 and z2
-    | * x_dim - # of latent variables in layer z0 or sensory x
-    | * seed - number to control determinism of weight initialization
-    | * wght_sd - standard deviation of Gaussian initialization of weights
-    | * beta - latent state update factor
-    | * leak - strength of the leak variable in the latent states
-    | * lmbda - strength of the Laplacian prior applied over latent state activities
-    | * K - # of steps to take when conducting iterative inference/settling
-    | * act_fx - activation function for layers z1, z2, and z3
-    | * out_fx - activation function for layer mu0 (prediction of z0) (Default: sigmoid)
+    | * z_top_dim: # of latent variables in layer z3 (top-most layer)
+    | * z_dim: # of latent variables in layers z1 and z2
+    | * x_dim: # of latent variables in layer z0 or sensory x
+    | * seed: number to control determinism of weight initialization
+    | * wght_sd: standard deviation of Gaussian initialization of weights
+    | * beta: latent state update factor
+    | * leak: strength of the leak variable in the latent states
+    | * lmbda: strength of the Laplacian prior applied over latent state activities
+    | * K: # of steps to take when conducting iterative inference/settling
+    | * act_fx: activation function for layers z1, z2, and z3
+    | * out_fx: activation function for layer mu0 (prediction of z0) (Default: sigmoid)
 
     """
     def __init__(self, args):
@@ -66,34 +67,34 @@ class GNCN_t1:
             out_fx = self.args.getArg("out_fx")
         leak = float(self.args.getArg("leak")) #0.0
 
-        # set up state integration function
         integrate_cfg = {"integrate_type" : "euler", "use_dfx" : True}
         lmbda = float(self.args.getArg("lmbda")) #0.0002
         prior_cfg = {"prior_type" : "laplace", "lambda" : lmbda}
-        use_mod_factor = False #(self.args.getArg("use_mod_factor").lower() == 'true')
+        precis_cfg = ("uniform", 0.01)
+        constraint_cfg = {"clip_type":"norm_clip","clip_mag":1.0,"clip_axis":0}
 
-        # set up system nodes
         z3 = SNode(name="z3", dim=z_top_dim, beta=beta, leak=leak, act_fx=act_fx,
                    integrate_kernel=integrate_cfg, prior_kernel=prior_cfg)
         mu2 = SNode(name="mu2", dim=z_dim, act_fx="identity", zeta=0.0)
-        e2 = ENode(name="e2", dim=z_dim)
+        e2 = ENode(name="e2", dim=z_dim, precis_kernel=precis_cfg)
+        e2.set_constraint(constraint_cfg)
         z2 = SNode(name="z2", dim=z_dim, beta=beta, leak=leak, act_fx=act_fx,
                    integrate_kernel=integrate_cfg, prior_kernel=prior_cfg)
         mu1 = SNode(name="mu1", dim=z_dim, act_fx="identity", zeta=0.0)
-        e1 = ENode(name="e1", dim=z_dim)
+        e1 = ENode(name="e1", dim=z_dim, precis_kernel=precis_cfg)
+        e1.set_constraint(constraint_cfg)
         z1 = SNode(name="z1", dim=z_dim, beta=beta, leak=leak, act_fx=act_fx,
-                   integrate_kernel=integrate_cfg, prior_kernel=prior_cfg)#, lateral_kernel=lateral_cfg)
+                   integrate_kernel=integrate_cfg, prior_kernel=prior_cfg)
         mu0 = SNode(name="mu0", dim=x_dim, act_fx=out_fx, zeta=0.0)
-        e0 = ENode(name="e0", dim=x_dim)
+        e0 = ENode(name="e0", dim=x_dim) #, precis_kernel=precis_cfg)
         z0 = SNode(name="z0", dim=x_dim, beta=beta, integrate_kernel=integrate_cfg, leak=0.0)
 
         # create cable wiring scheme relating nodes to one another
-        wght_sd = float(self.args.getArg("wght_sd"))
+        wght_sd = float(self.args.getArg("wght_sd")) #0.025 #0.05 # 0.055
         init_kernels = {"A_init" : ("gaussian",wght_sd)}
         dcable_cfg = {"type": "dense", "init_kernels" : init_kernels, "seed" : seed}
         pos_scable_cfg = {"type": "simple", "coeff": 1.0}
         neg_scable_cfg = {"type": "simple", "coeff": -1.0}
-        constraint_cfg = {"clip_type":"norm_clip","clip_mag":1.0,"clip_axis":0}
 
         z3_mu2 = z3.wire_to(mu2, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=dcable_cfg,
                             short_name="W3")
@@ -123,7 +124,7 @@ class GNCN_t1:
                             short_name="W1")
         z1_mu0.set_constraint(constraint_cfg)
         mu0.wire_to(e0, src_comp="phi(z)", dest_comp="pred_mu", cable_kernel=pos_scable_cfg,
-                    short_name="1")
+                   short_name="1")
         z0.wire_to(e0, src_comp="phi(z)", dest_comp="pred_targ", cable_kernel=pos_scable_cfg,
                    short_name="1")
         e0.wire_to(z1, src_comp="phi(z)", dest_comp="dz_bu", mirror_path_kernel=(z1_mu0,"A^T"),
@@ -138,15 +139,14 @@ class GNCN_t1:
 
         # Set up graph - execution cycle/order
         print(" > Constructing NGC graph")
-        ngc_model = NGCGraph(K=K, name="gncn_t1")
+        ngc_model = NGCGraph(K=K, name="gncn_t1_sigma")
         ngc_model.set_cycle(nodes=[z3, z2, z1, z0])
         ngc_model.set_cycle(nodes=[mu2, mu1, mu0])
         ngc_model.set_cycle(nodes=[e2, e1, e0])
-        ngc_model.apply_constraints()
         info = ngc_model.compile(batch_size=batch_size)
         self.info = parse_simulation_info(info)
+        ngc_model.apply_constraints()
         self.ngc_model = ngc_model
-        
 
         # build this NGC model's sampling graph
         z3_dim = ngc_model.getNode("z3").dim

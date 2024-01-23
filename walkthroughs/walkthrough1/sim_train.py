@@ -87,7 +87,7 @@ xfname = args.getArg("train_xfname")
 print(" >> Loading data into memory...")
 X = transform.binarize( tf.cast(np.load(xfname),dtype=tf.float32) ).numpy()
 x_dim = X.shape[1]
-args.setArg("x_dim",x_dim)
+args.setArg("x_dim", x_dim)
 train_set = DataLoader(design_matrices=[("z0",X)], batch_size=batch_size)
 
 # create development/validation sample

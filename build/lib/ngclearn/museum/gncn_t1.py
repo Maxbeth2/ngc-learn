@@ -146,7 +146,6 @@ class GNCN_t1:
         info = ngc_model.compile(batch_size=batch_size)
         self.info = parse_simulation_info(info)
         self.ngc_model = ngc_model
-        
 
         # build this NGC model's sampling graph
         z3_dim = ngc_model.getNode("z3").dim

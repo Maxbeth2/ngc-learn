@@ -14,40 +14,51 @@ from ngclearn.engine.proj_graph import ProjectionGraph
 
 from ngclearn.utils.io_utils import parse_simulation_info
 
-class GNCN_t1:
+class GNCN_PDH:
     """
     Structure for constructing the model proposed in:
 
-    Rao, Rajesh PN, and Dana H. Ballard. "Predictive coding in the visual
-    cortex: a functional interpretation of some extra-classical receptive-field
-    effects." Nature neuroscience 2.1 (1999): 79-87.
+    Ororbia, A., and Kifer, D. The neural coding framework for learning
+    generative models. Nature Communications 13, 2064 (2022).
 
-    Note this model includes the Laplacian prior to induce some level of sparsity
-    in the latent activities. This model, under the NGC computational framework,
-    is referred to as the GNCN-t1/Rao, according to the naming convention in
+    This model, under the NGC computational framework, is referred to as
+    the GNCN-t1-Sigma/Friston, according to the naming convention in
     (Ororbia & Kifer 2022).
+
+    | Historical Note:
+    | (The arXiv paper that preceded the publication above is shown below:)
+    | Ororbia, Alexander, and Daniel Kifer. "The neural coding framework for
+    | learning generative models." arXiv preprint arXiv:2012.03405 (2020).
 
     | Node Name Structure:
     | z3 -(z3-mu2)-> mu2 ;e2; z2 -(z2-mu1)-> mu1 ;e1; z1 -(z1-mu0-)-> mu0 ;e0; z0
+    | z3 -(z3-mu1)-> mu1; z2 -(z2-mu0)-> mu0
+    | e2 -> e2 * Sigma2; e1 -> e1 * Sigma1  // Precision weighting
+    | z3 -> z3 * Lat3;  z2 -> z2 * Lat2;  z1 -> z1 * Lat1 // Lateral competition
+    | e2 -(e2-z3)-> z3; e1 -(e1-z2)-> z2; e0 -(e0-z1)-> z1  // Error feedback
 
     Args:
-        args: a Config dictionary containing necessary meta-parameters for the GNCN-t1
+        args: a Config dictionary containing necessary meta-parameters for the GNCN-PDH
 
     | DEFINITION NOTE:
     | args should contain values for the following:
     | * batch_size - the fixed batch-size to be fed into this model
-    | * z_top_dim - # of latent variables in layer z3 (top-most layer)
-    | * z_dim - # of latent variables in layers z1 and z2
-    | * x_dim - # of latent variables in layer z0 or sensory x
-    | * seed - number to control determinism of weight initialization
-    | * wght_sd - standard deviation of Gaussian initialization of weights
-    | * beta - latent state update factor
-    | * leak - strength of the leak variable in the latent states
-    | * lmbda - strength of the Laplacian prior applied over latent state activities
-    | * K - # of steps to take when conducting iterative inference/settling
-    | * act_fx - activation function for layers z1, z2, and z3
-    | * out_fx - activation function for layer mu0 (prediction of z0) (Default: sigmoid)
-
+    | * z_top_dim: # of latent variables in layer z3 (top-most layer)
+    | * z_dim: # of latent variables in layers z1 and z2
+    | * x_dim: # of latent variables in layer z0 or sensory x
+    | * seed: number to control determinism of weight initialization
+    | * wght_sd: standard deviation of Gaussian initialization of weights
+    | * beta: latent state update factor
+    | * leak: strength of the leak variable in the latent states
+    | * K: # of steps to take when conducting iterative inference/settling
+    | * act_fx: activation function for layers z1, z2, and z3
+    | * out_fx: activation function for layer mu0 (prediction of z0) (Default: sigmoid)
+    | * n_group: number of neurons w/in a competition group for z2 and z2 (sizes of z2
+        and z1 should be divisible by this number)
+    | * n_top_group: number of neurons w/in a competition group for z3 (size of z3
+        should be divisible by this number)
+    | * alpha_scale: the strength of self-excitation
+    | * beta_scale: the strength of cross-inhibition
     """
     def __init__(self, args):
         self.args = args
@@ -65,88 +76,161 @@ class GNCN_t1:
         if self.args.hasArg("out_fx") == True:
             out_fx = self.args.getArg("out_fx")
         leak = float(self.args.getArg("leak")) #0.0
+        ex_scale = 1.0
+        n_group = int(self.args.getArg("n_group")) #18
+        n_top_group = int(self.args.getArg("n_top_group")) #18
+        alpha_scale = float(self.args.getArg("alpha_scale"))
+        beta_scale = float(self.args.getArg("beta_scale"))
+        wght_sd = float(self.args.getArg("wght_sd"))
 
-        # set up state integration function
-        integrate_cfg = {"integrate_type" : "euler", "use_dfx" : True}
-        lmbda = float(self.args.getArg("lmbda")) #0.0002
-        prior_cfg = {"prior_type" : "laplace", "lambda" : lmbda}
-        use_mod_factor = False #(self.args.getArg("use_mod_factor").lower() == 'true')
+        use_dfx = False
+        if self.args.hasArg("use_dfx"):
+            use_dfx = (self.args.getArg("use_dfx").lower() == 'true')
+            print(" > Using Activation Function Derivative...")
+        integrate_cfg = {"integrate_type" : "euler", "use_dfx" : use_dfx}
+        precis_cfg = ("uniform", 0.01)
+        constraint_cfg = {"clip_type":"norm_clip","clip_mag":1.0,"clip_axis":0}
+        use_mod_factor = False
+        add_extra_skip =  False
+        use_skip_error = False
 
-        # set up system nodes
         z3 = SNode(name="z3", dim=z_top_dim, beta=beta, leak=leak, act_fx=act_fx,
-                   integrate_kernel=integrate_cfg, prior_kernel=prior_cfg)
-        mu2 = SNode(name="mu2", dim=z_dim, act_fx="identity", zeta=0.0)
-        e2 = ENode(name="e2", dim=z_dim)
+                   integrate_kernel=integrate_cfg)
+        mu2 = SNode(name="mu2", dim=z_dim, act_fx="relu", zeta=0.0)
+        e2 = ENode(name="e2", dim=z_dim, precis_kernel=precis_cfg)
+        e2.set_constraint(constraint_cfg)
         z2 = SNode(name="z2", dim=z_dim, beta=beta, leak=leak, act_fx=act_fx,
-                   integrate_kernel=integrate_cfg, prior_kernel=prior_cfg)
-        mu1 = SNode(name="mu1", dim=z_dim, act_fx="identity", zeta=0.0)
-        e1 = ENode(name="e1", dim=z_dim)
+                   integrate_kernel=integrate_cfg)
+        mu1 = SNode(name="mu1", dim=z_dim, act_fx="relu", zeta=0.0)
+        e1 = ENode(name="e1", dim=z_dim, precis_kernel=precis_cfg)
+        e1.set_constraint(constraint_cfg)
         z1 = SNode(name="z1", dim=z_dim, beta=beta, leak=leak, act_fx=act_fx,
-                   integrate_kernel=integrate_cfg, prior_kernel=prior_cfg)#, lateral_kernel=lateral_cfg)
+                   integrate_kernel=integrate_cfg)
         mu0 = SNode(name="mu0", dim=x_dim, act_fx=out_fx, zeta=0.0)
-        e0 = ENode(name="e0", dim=x_dim)
+        e0 = ENode(name="e0", dim=x_dim, ex_scale=ex_scale) #, precis_kernel=precis_cfg)
         z0 = SNode(name="z0", dim=x_dim, beta=beta, integrate_kernel=integrate_cfg, leak=0.0)
 
         # create cable wiring scheme relating nodes to one another
-        wght_sd = float(self.args.getArg("wght_sd"))
         init_kernels = {"A_init" : ("gaussian",wght_sd)}
         dcable_cfg = {"type": "dense", "init_kernels" : init_kernels, "seed" : seed}
+        ecable_cfg = {"type": "dense", "init_kernels" : init_kernels, "seed" : seed}
         pos_scable_cfg = {"type": "simple", "coeff": 1.0}
         neg_scable_cfg = {"type": "simple", "coeff": -1.0}
-        constraint_cfg = {"clip_type":"norm_clip","clip_mag":1.0,"clip_axis":0}
+
+        # beta_scale = 0.1 # alpha_scale = 0.15
+        lat_init = {"A_init" : ("lkwta",n_group,alpha_scale,beta_scale)}
+        lateral_cfg = {"type" : "dense", "init_kernels" : lat_init, "coeff": -1.0}
+
+        top_lat_init = {"A_init" : ("lkwta",n_top_group,alpha_scale,beta_scale)}
+        lateral_cfg_top = {"type" : "dense", "init_kernels" : top_lat_init, "coeff": -1.0}
+        # lateral recurrent connection
+        z3_to_z3 = z3.wire_to(z3, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=lateral_cfg_top,
+                              short_name="V3")
 
         z3_mu2 = z3.wire_to(mu2, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=dcable_cfg,
                             short_name="W3")
         z3_mu2.set_constraint(constraint_cfg)
         mu2.wire_to(e2, src_comp="phi(z)", dest_comp="pred_mu", cable_kernel=pos_scable_cfg,
                     short_name="1")
-        z2.wire_to(e2, src_comp="z", dest_comp="pred_targ", cable_kernel=pos_scable_cfg,
+        z2.wire_to(e2, src_comp="phi(z)", dest_comp="pred_targ", cable_kernel=pos_scable_cfg,
                    short_name="1")
-        e2.wire_to(z3, src_comp="phi(z)", dest_comp="dz_bu", mirror_path_kernel=(z3_mu2,"A^T"),
-                   short_name="W3^T")
+        e2_z3 = e2.wire_to(z3, src_comp="phi(z)", dest_comp="dz_bu", cable_kernel=ecable_cfg,
+                           short_name="E3")
+        e2_z3.set_constraint(constraint_cfg)
         e2.wire_to(z2, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=neg_scable_cfg,
                    short_name="-1")
 
+        # lateral recurrent connection
+        z2_to_z2 = z2.wire_to(z2, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=lateral_cfg,
+                              short_name="V2")
+
         z2_mu1 = z2.wire_to(mu1, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=dcable_cfg,
-                           short_name="W2")
+                            short_name="W2")
         z2_mu1.set_constraint(constraint_cfg)
+        z3_mu1 = z3.wire_to(mu1, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=dcable_cfg,
+                            short_name="S3")
+        z3_mu1.set_constraint(constraint_cfg)
         mu1.wire_to(e1, src_comp="phi(z)", dest_comp="pred_mu", cable_kernel=pos_scable_cfg,
                     short_name="1")
-        z1.wire_to(e1, src_comp="z", dest_comp="pred_targ", cable_kernel=pos_scable_cfg,
+        z1.wire_to(e1, src_comp="phi(z)", dest_comp="pred_targ", cable_kernel=pos_scable_cfg,
                    short_name="1")
-        e1.wire_to(z2, src_comp="phi(z)", dest_comp="dz_bu", mirror_path_kernel=(z2_mu1,"A^T"),
-                   short_name="W2^T")
+        e1_z2 = e1.wire_to(z2, src_comp="phi(z)", dest_comp="dz_bu", cable_kernel=ecable_cfg,
+                           short_name="E2")
+        e1_z2.set_constraint(constraint_cfg)
         e1.wire_to(z1, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=neg_scable_cfg,
                    short_name="-1")
+        if use_skip_error is True:
+            e1_z3 = e1.wire_to(z3, src_comp="phi(z)", dest_comp="dz_bu", cable_kernel=ecable_cfg)
+            e1_z3.set_constraint(constraint_cfg)
+
+        # lateral recurrent connection
+        z1_to_z1 = z1.wire_to(z1, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=lateral_cfg,
+                              short_name="V1")
 
         z1_mu0 = z1.wire_to(mu0, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=dcable_cfg,
                             short_name="W1")
         z1_mu0.set_constraint(constraint_cfg)
+        z2_mu0 = z2.wire_to(mu0, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=dcable_cfg,
+                            short_name="S2")
+        z2_mu0.set_constraint(constraint_cfg)
+        if add_extra_skip is True:
+            z3_mu0 = z3.wire_to(mu0, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=dcable_cfg)
+            z3_mu0.set_constraint(constraint_cfg)
         mu0.wire_to(e0, src_comp="phi(z)", dest_comp="pred_mu", cable_kernel=pos_scable_cfg,
                     short_name="1")
         z0.wire_to(e0, src_comp="phi(z)", dest_comp="pred_targ", cable_kernel=pos_scable_cfg,
                    short_name="1")
-        e0.wire_to(z1, src_comp="phi(z)", dest_comp="dz_bu", mirror_path_kernel=(z1_mu0,"A^T"),
-                   short_name="W1^T")
+        e0_z1 = e0.wire_to(z1, src_comp="phi(z)", dest_comp="dz_bu", cable_kernel=ecable_cfg,
+                           short_name="E1")
+        e0_z1.set_constraint(constraint_cfg)
         e0.wire_to(z0, src_comp="phi(z)", dest_comp="dz_td", cable_kernel=neg_scable_cfg,
                    short_name="-1")
+        if use_skip_error is True:
+            e0_z2 = e0.wire_to(z2, src_comp="phi(z)", dest_comp="dz_bu", cable_kernel=ecable_cfg)
+            e0_z2.set_constraint(constraint_cfg)
+        if add_extra_skip is True:
+            if use_skip_error is True:
+                e0_z3 = e0.wire_to(z3, src_comp="phi(z)", dest_comp="dz_bu", cable_kernel=ecable_cfg)
+                e0_z3.set_constraint(constraint_cfg)
+
+        #z3_mu1.set_decay(decay_kernel=("l1",0.00005))
+        #z2_mu0.set_decay(decay_kernel=("l1",0.00005))
+        #z3_mu2.set_decay(decay_kernel=("l1",0.00005))
+        #z2_mu1.set_decay(decay_kernel=("l1",0.00005))
+        #z1_mu0.set_decay(decay_kernel=("l1",0.00005))
+        #e2_z3.set_decay(decay_kernel=("l1",0.00005))
+        #e1_z2.set_decay(decay_kernel=("l1",0.00005))
+        #e0_z1.set_decay(decay_kernel=("l1",0.00005))
 
         # set up update rules and make relevant edges aware of these
+        z3_mu1.set_update_rule(preact=(z3,"phi(z)"), postact=(e1,"phi(z)"), param=["A"])
+        z2_mu0.set_update_rule(preact=(z2,"phi(z)"), postact=(e0,"phi(z)"), use_mod_factor=use_mod_factor, param=["A"])
+        if add_extra_skip is True:
+            z3_mu0.set_update_rule(preact=(z3,"phi(z)"), postact=(e0,"phi(z)"), param=["A"])
         z3_mu2.set_update_rule(preact=(z3,"phi(z)"), postact=(e2,"phi(z)"), param=["A"])
         z2_mu1.set_update_rule(preact=(z2,"phi(z)"), postact=(e1,"phi(z)"), param=["A"])
         z1_mu0.set_update_rule(preact=(z1,"phi(z)"), postact=(e0,"phi(z)"), param=["A"])
+        e_gamma = 1.0
+        e2_z3.set_update_rule(preact=(e2,"phi(z)"), postact=(z3,"phi(z)"), gamma=e_gamma, param=["A"])
+        e1_z2.set_update_rule(preact=(e1,"phi(z)"), postact=(z2,"phi(z)"), gamma=e_gamma, use_mod_factor=use_mod_factor, param=["A"])
+        e0_z1.set_update_rule(preact=(e0,"phi(z)"), postact=(z1,"phi(z)"), gamma=e_gamma, use_mod_factor=use_mod_factor, param=["A"])
+        if use_skip_error is True:
+            e0_z2.set_update_rule(preact=(e0,"phi(z)"), postact=(z2,"phi(z)"), gamma=e_gamma, param=["A"])
+            e1_z3.set_update_rule(preact=(e1,"phi(z)"), postact=(z3,"phi(z)"), gamma=e_gamma, param=["A"])
+        if add_extra_skip is True:
+            if use_skip_error is True:
+                e0_z3.set_update_rule(preact=(e0,"phi(z)"), postact=(z3,"phi(z)"), gamma=e_gamma, param=["A"])
 
         # Set up graph - execution cycle/order
         print(" > Constructing NGC graph")
-        ngc_model = NGCGraph(K=K, name="gncn_t1")
+        ngc_model = NGCGraph(K=K, name="gncn_pdh")
         ngc_model.set_cycle(nodes=[z3, z2, z1, z0])
         ngc_model.set_cycle(nodes=[mu2, mu1, mu0])
         ngc_model.set_cycle(nodes=[e2, e1, e0])
-        ngc_model.apply_constraints()
-        info = ngc_model.compile(batch_size=batch_size)
+        info = ngc_model.compile(batch_size=batch_size, use_graph_optim=True)
         self.info = parse_simulation_info(info)
+        ngc_model.apply_constraints()
         self.ngc_model = ngc_model
-        
 
         # build this NGC model's sampling graph
         z3_dim = ngc_model.getNode("z3").dim
@@ -160,7 +244,11 @@ class GNCN_t1:
         s0 = FNode(name="s0", dim=z0_dim, act_fx=out_fx)
         s3_s2 = s3.wire_to(s2, src_comp="phi(z)", dest_comp="dz", mirror_path_kernel=(z3_mu2,"A"))
         s2_s1 = s2.wire_to(s1, src_comp="phi(z)", dest_comp="dz", mirror_path_kernel=(z2_mu1,"A"))
+        s3_s1 = s3.wire_to(s1, src_comp="phi(z)", dest_comp="dz", mirror_path_kernel=(z3_mu1,"A"))
         s1_s0 = s1.wire_to(s0, src_comp="phi(z)", dest_comp="dz", mirror_path_kernel=(z1_mu0,"A"))
+        s2_s0 = s2.wire_to(s0, src_comp="phi(z)", dest_comp="dz", mirror_path_kernel=(z2_mu0,"A"))
+        if add_extra_skip is True:
+            s3_s0 = s3.wire_to(s0, src_comp="phi(z)", dest_comp="dz", mirror_path_kernel=(z3_mu0,"A"))
         sampler = ProjectionGraph()
         sampler.set_cycle(nodes=[s3, s2, s1, s0])
         sampler_info = sampler.compile()
