@@ -71,11 +71,18 @@ def draw_ellipse(position, covariance, ax=None, color=None, **kwargs):
             width, height = 2 * np.sqrt(covariance)
     # Draw the Ellipse
     alpha = 0.2
+    print()
+    print(position)
+    print(2 * width)
+    print(2 * height)
+    print(angle)
+    print()
+    position = (position[0], position[1])
     for nsig in range(1, 4):
         if color is not None:
-            ax.add_patch(Ellipse(position, nsig * width, nsig * height, angle, alpha=alpha, color=color))
+            ax.add_patch(Ellipse(position, nsig * width, nsig * height, angle=angle, alpha=alpha, color=color))
         else:
-            ax.add_patch(Ellipse(position, nsig * width, nsig * height, angle, alpha=alpha)) #, **kwargs))
+            ax.add_patch(Ellipse(position, nsig * width, nsig * height, angle=angle, alpha=alpha)) #, **kwargs))
 
 def generate_plot(X, mu_list, covar_list, fname, color=None):
     """
@@ -141,7 +148,7 @@ K = 40
 leak = 0.0001
 beta = 0.1
 z2_dim = 2
-z1_dim = 64
+z1_dim = 16
 integrate_cfg = {"integrate_type" : "euler", "use_dfx" : True}
 prior_cfg = {"prior_type" : "laplace", "lambda" : 0.0001}
 

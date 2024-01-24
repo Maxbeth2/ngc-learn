@@ -18,11 +18,12 @@ class SNodeBuilder:
         GAUSS = "gaussian"
 
     class ACT_FX(Enum):
+        ELU = "elu"
         RELU = "relu"
         ID = "identity"
 
     def __init__(self):
-        self._icfg = {"integrate_type": "euler", "use_dfx": False}
+        self._icfg = None
         self._pcfg = None
         self._leak = 0.001
         self._beta = 0.1
@@ -34,8 +35,12 @@ class SNodeBuilder:
         return self
     
     def reset(self):
-        self._icfg = {"integrate_type": "euler", "use_dfx": True}
+        self._icfg = None
         self._pcfg = None
+        self._leak = 0.001
+        self._beta = 0.1
+        self._zeta = 1.0
+        self._fx = "identity"
         return self
 
     def O1_set_numerals(self, beta=0.1, leak=0.01, zeta=1.0):
@@ -44,12 +49,27 @@ class SNodeBuilder:
         self._zeta = zeta
         return self
     
-    def O2_set_cats(self, use_dfx=False, act_fx=ACT_FX.ID):
-        self._icfg["use_dfx"] = use_dfx
+    def O2_set_cats(self, integrate=False, use_dfx=False, act_fx=ACT_FX.ID):
+        if integrate:
+            self._icfg = {"integrate_type": "euler", "use_dfx": False}
+            self._icfg["use_dfx"] = use_dfx
+        else:
+            self._icfg = None
         self._fx = act_fx.value
         return self
 
-    def O0_build(self, name, dim, reset=True):
+    def O0_build(self, name, dim, reset=True, verbose=False):
+        if verbose:
+            print(f"SNode(\
+                name={name}, \
+                dim={dim}, \
+                beta={self._beta},\
+                leak={self._leak},\
+                zeta={self._zeta},\
+                integrate_kernel={self._icfg},\
+                prior_kernel={self._pcfg},\
+                act_fx={self._fx}\
+                ")
         n = SNode(
                 name=name, 
                 dim=dim, 
@@ -162,7 +182,7 @@ class CableConnector:
         where self._ik is
             {"A_init": ("gaussian", 0.025)}
         """
-        self._ik["A_init"] = (dist, mu)
+        self._ik["A_init"] = (dist.value, mu)
         self._cfg = {"type": "dense", "init_kernels": self._ik, "seed": 69, "coeff": None}
         self._mpk = None
         return self
@@ -179,8 +199,8 @@ class CableConnector:
         self._cfg = {"type": "dense", "init_kernels": self._ik, "seed": 69, "coeff": None}
         self._mpk = None
         return self
-    def Op1_with_update_rule(self, pre=SComps.PHI, post=SComps.PHI, param=Param.A):
-        self._update_rule_dict = {"pre": pre.value, "post": post.value, "param": [param.value]}
+    def Op1_with_update_rule(self, prenode, postnode, pre=SComps.PHI, post=SComps.PHI, param=Param.A):
+        self._update_rule_dict = {"prenode": prenode, "postnode": postnode ,"pre": pre.value, "post": post.value, "param": [param.value]}
         return self
     def Op1_disable_update(self):
         self._update_rule_dict = None
@@ -198,6 +218,7 @@ class CableConnector:
         else:
             type = self._cfg["type"]
         print(f"Connecting nodes {from_node.name}-{to_node.name} with -{type}- cable")
+        from_node : SNode
         cable = from_node.wire_to(
             to_node, 
             src_comp=from_comp.value, 
@@ -207,8 +228,8 @@ class CableConnector:
             )
         if self._update_rule_dict is not None:
             cable.set_update_rule(
-                preact=(from_node, self._update_rule_dict["pre"]),
-                postact=(to_node, self._update_rule_dict["post"]),
+                preact=(self._update_rule_dict["prenode"], self._update_rule_dict["pre"]),
+                postact=(self._update_rule_dict["postnode"], self._update_rule_dict["post"]),
                 param=self._update_rule_dict["param"]
                 )
         if self._constraint_dict is not None:
