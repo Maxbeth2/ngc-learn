@@ -1,15 +1,30 @@
-from construction_utils import CableConnector, SNodeBuilder
+from construction_utils import SNodeBuilder, CableConnector
 from ngclearn.engine.nodes.enode import ENode
-
+from ngclearn.engine.ngc_graph import NGCGraph
+x_dim = 2
+z1_dim = 16
+z2_dim = 3
 bd = SNodeBuilder()
 cc = CableConnector()
 
-a = bd.set_values(beta=0.05, leak=0.001).build("a", dim=20)
-b = bd.set_values(beta=0.05, leak=0.002).build("b", dim=10)
-e = ENode("e", dim=10)
+z2 = bd.O0_build("z2", dim=z2_dim)
+mu1 = bd.O0_build("mu1", dim=z1_dim)
+e1 = ENode("e1", dim=z1_dim)
+z1 = bd.O0_build("z1", dim=z1_dim)
+mu0 = bd.O0_build("mu0", dim=x_dim)
+e0 = ENode("e0", dim=x_dim)
+z0 = bd.O0_build("z0", dim=x_dim)
 
-a_e = cc.with_update_rule().with_constraints().connect(a, e, to_comp=cc.EComps.PMU, reset=True)
-b_e = cc._1_simple().connect(b, e, from_comp=cc.SComps.Z, to_comp=cc.EComps.PTARG)
+cc.O1_dense().O0_connect(z2, mu1)
+cc.O1_dense().O0_connect(z1, mu0)
 
-cc._1_mirror(a_e).connect(e, a, to_comp=cc.SComps.BU)
-cc._1_simple(-1.0).connect(e, b)
+
+circuit = NGCGraph(K=1)
+circuit.set_cycle([z2, z1, z0])
+circuit.set_cycle([mu1, mu0])
+circuit.set_cycle([e1, e0])
+circuit.compile(batch_size=1)
+
+import ngclearn.utils.experimental.viz_graph_utils as viz
+
+viz.visualize_graph(circuit) # generate the graph visual of

@@ -59,3 +59,7 @@ ngclearn/utils/transform_utils.py
 ngclearn/utils/viz_utils.py
 ngclearn/utils/experimental/__init__.py
 ngclearn/utils/experimental/viz_graph_utils.py
+ngclearn/utils/max/__init__.py
+tests/test_gen_dynamics.py
+tests/test_harmonium.py
+tests/test_identity.py
