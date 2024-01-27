@@ -1,4 +1,4 @@
-from construction_utils import SNodeBuilder, CableConnector
+from utils.construction_utils import SNodeBuilder, CableConnector
 from ngclearn.engine.nodes.enode import ENode
 from ngclearn.engine.ngc_graph import NGCGraph
 import tensorflow as tf
@@ -8,9 +8,10 @@ from pynput.mouse import Controller
 
 import multiprocessing as mp
 class GNCNProcess(mp.Process):
-    def __init__(self, send_conn):
+    def __init__(self, send_conn, send_sc):
         mp.Process.__init__(self)
         self.snd = send_conn
+        self.snd_sc = send_sc
         self.model = create_network()
         self.mouse = Controller()
 
@@ -26,10 +27,11 @@ class GNCNProcess(mp.Process):
             )
             mu0 = readouts[0][2].numpy()
             z2 = readouts[1][2].numpy()
-            print(z2)
+            # print(z2)
             # self.snd.send([[mu0[0][0]], [mu0[0][1]]])
             # self.snd.send(readouts)
             inp = self.mouse.position
+            # self.snd_sc.send(inp)
             inp = ([inp[0]/1000], [-inp[1]/1000])
             self.package_and_send(readouts, inp)
             for p in range(len(delta)):
@@ -37,7 +39,6 @@ class GNCNProcess(mp.Process):
             opt.apply_gradients(zip(delta, self.model.theta))
             self.model.apply_constraints()
             self.model.clear()
-            # t.sleep(0.2)
 
     def norm_mouse_pos(self):
         vec = np.array([self.mouse.position]) / 1000.0
@@ -96,7 +97,7 @@ def create_network():
     circuit.compile(batch_size=1)
     print("Done\n")
 
-    from vis import visualize_graph
+    from utils.vis import visualize_graph
     visualize_graph(circuit, output_dir="vis_net", width='1000px') # generate the graph visual of
 
     return circuit
