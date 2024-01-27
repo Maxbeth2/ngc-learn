@@ -7,11 +7,13 @@ import tensorflow as tf
 
 import time as t
 
+def help():
+    print("RemotePlotter(rec, 30).start()")
 
 if __name__ == '__main__':
     
     rec, snd = mp.Pipe()
-    rp = RemotePlotter(rec, 30)
+    rp = RemotePlotter(rec, 40)
     ncn = GNCNProcess(snd)
     rp.start()
     ncn.start()

@@ -13,6 +13,7 @@ class RemotePlotter(mp.Process):
     def run(self):
         print(">Starting remote plotter...")
         self.sc = pg.ScatterPlotItem()
+        self.z2 = pg.ScatterPlotItem()
 
         app = pg.mkQApp("NGC monitor")
         win = pg.GraphicsLayoutWidget(show=True, title="Max NGC Monitor")
@@ -21,7 +22,8 @@ class RemotePlotter(mp.Process):
 
         p0 = win.addPlot(title="mu0")
         p0.addItem(self.sc)
-        p5 = win.addPlot(title="Scatter plot, axis labels, log scale")
+        p1 = win.addPlot(title="Scatter plot, axis labels, log scale")
+        p1.addItem(self.z2)
 
         timer = QtCore.QTimer()
         timer.timeout.connect(self.update)
@@ -41,9 +43,11 @@ class RemotePlotter(mp.Process):
             # mu0 = readouts[0][2].numpy()
             mu0 = package["mu0"]
             x = package["x"]
+            z2 = package["z2"]
             # print(f"VEC:{vec}")
             self.sc.addPoints(mu0[0],mu0[1], pen='b')
             self.sc.addPoints(x[0], x[1], pen='r')
+            self.z2.addPoints(z2[0], z2[1])
             n = 0
             while self.conn.poll():
                 self.conn.recv()

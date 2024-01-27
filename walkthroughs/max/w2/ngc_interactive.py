@@ -22,9 +22,11 @@ class GNCNProcess(mp.Process):
             inp = self.norm_mouse_pos()
             readouts, delta = self.model.settle(
                 clamped_vars=[("z0", "z", inp)],
-                readout_vars=[("mu0", "phi(z)")]
+                readout_vars=[("mu0", "phi(z)"),("z2", "phi(z)")]
             )
             mu0 = readouts[0][2].numpy()
+            z2 = readouts[1][2].numpy()
+            print(z2)
             # self.snd.send([[mu0[0][0]], [mu0[0][1]]])
             # self.snd.send(readouts)
             inp = self.mouse.position
@@ -45,7 +47,8 @@ class GNCNProcess(mp.Process):
     
     def package_and_send(self, readouts, input):
         mu0 = readouts[0][2].numpy()
-        package = {"mu0": ([mu0[0][0]], [mu0[0][1]]), "x": input}
+        z2 = readouts[1][2].numpy()
+        package = {"z2":([z2[0][0]], [z2[0][1]]), "mu0": ([mu0[0][0]], [mu0[0][1]]), "x": input}
         self.snd.send(package)
         
 
@@ -59,12 +62,12 @@ class GNCNProcess(mp.Process):
 
 def create_network():
     x_dim = 2
-    z1_dim = 16
-    z2_dim = 3
+    z1_dim = 4
+    z2_dim = 2
     bd = SNodeBuilder()
     cc = CableConnector()
 
-    z2 = bd.O0_build("z2", dim=z2_dim)
+    z2 = bd.Op1_with_prior(lbd=0.0001).O0_build("z2", dim=z2_dim)
     mu1 = bd.O0_build("mu1", dim=z1_dim)
     e1 = ENode("e1", dim=z1_dim)
     z1 = bd.Op1_with_prior().O0_build("z1", dim=z1_dim)
@@ -92,5 +95,8 @@ def create_network():
     print("Compiling..")
     circuit.compile(batch_size=1)
     print("Done\n")
+
+    from vis import visualize_graph
+    visualize_graph(circuit, output_dir="vis_net", width='1000px') # generate the graph visual of
 
     return circuit
