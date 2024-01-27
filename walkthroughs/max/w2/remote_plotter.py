@@ -35,9 +35,15 @@ class RemotePlotter(mp.Process):
     def update(self):
         self.conn : mpc.Connection
         if self.conn.poll():
-            vec = self.conn.recv()
+            package = self.conn.recv()
+            # mu0 = self.conn.recv()
+            # readouts = self.conn.recv()
+            # mu0 = readouts[0][2].numpy()
+            mu0 = package["mu0"]
+            x = package["x"]
             # print(f"VEC:{vec}")
-            self.sc.addPoints(vec[0], vec[1])
+            self.sc.addPoints(mu0[0],mu0[1], pen='b')
+            self.sc.addPoints(x[0], x[1], pen='r')
             n = 0
             while self.conn.poll():
                 self.conn.recv()

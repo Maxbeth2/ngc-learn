@@ -18,13 +18,18 @@ class GNCNProcess(mp.Process):
         opt = tf.optimizers.Adam()
         ones = tf.ones([1,2])
         self.model : NGCGraph
-        for i in range(1000):
+        while True:
+            inp = self.norm_mouse_pos()
             readouts, delta = self.model.settle(
-                clamped_vars=[("z0", "z", self.norm_mouse_pos())],
+                clamped_vars=[("z0", "z", inp)],
                 readout_vars=[("mu0", "phi(z)")]
             )
             mu0 = readouts[0][2].numpy()
-            self.snd.send([[mu0[0][0]], [mu0[0][1]]])
+            # self.snd.send([[mu0[0][0]], [mu0[0][1]]])
+            # self.snd.send(readouts)
+            inp = self.mouse.position
+            inp = ([inp[0]/1000], [-inp[1]/1000])
+            self.package_and_send(readouts, inp)
             for p in range(len(delta)):
                 delta[p] = delta[p] * (1.0/(ones.shape[0] * 1.0))
             opt.apply_gradients(zip(delta, self.model.theta))
@@ -38,8 +43,10 @@ class GNCNProcess(mp.Process):
         vec = tf.cast(vec, dtype=tf.float32)
         return vec
     
-    def package_and_send(self, readouts):
-
+    def package_and_send(self, readouts, input):
+        mu0 = readouts[0][2].numpy()
+        package = {"mu0": ([mu0[0][0]], [mu0[0][1]]), "x": input}
+        self.snd.send(package)
         
 
 
