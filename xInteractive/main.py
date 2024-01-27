@@ -13,6 +13,7 @@ def help():
 if __name__ == '__main__':
     
     rec, snd = mp.Pipe()
+    r_sc, s_sc = mp.Pipe()
     rp = RemotePlotter(rec, 40)
     ncn = GNCNProcess(snd)
     rp.start()

@@ -58,13 +58,13 @@
       <data key="d4">z2-to-mu1_dense</data>
       <data key="d5">3</data>
       <data key="d6">3</data>
-      <data key="d7">blue</data>
+      <data key="d7">red</data>
     </edge>
     <edge source="1" target="4">
       <data key="d4">z1-to-mu0_dense</data>
       <data key="d5">3</data>
       <data key="d6">3</data>
-      <data key="d7">blue</data>
+      <data key="d7">red</data>
     </edge>
     <edge source="1" target="5">
       <data key="d4">z1-to-e1_simple</data>
