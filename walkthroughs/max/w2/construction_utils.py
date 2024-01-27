@@ -217,7 +217,7 @@ class CableConnector:
             type = "mirrored"
         else:
             type = self._cfg["type"]
-        print(f"Connecting nodes {from_node.name}-{to_node.name} with -{type}- cable")
+        # print(f"Connecting nodes {from_node.name}-{to_node.name} with -{type}- cable")
         from_node : SNode
         cable = from_node.wire_to(
             to_node, 
