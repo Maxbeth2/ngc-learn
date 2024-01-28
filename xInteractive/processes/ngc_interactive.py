@@ -8,12 +8,12 @@ from pynput.mouse import Controller
 
 import multiprocessing as mp
 class GNCNProcess(mp.Process):
-    def __init__(self, send_conn, send_sc):
+    def __init__(self, send_conn):
         mp.Process.__init__(self)
         self.snd = send_conn
-        self.snd_sc = send_sc
         self.model = create_network()
         self.mouse = Controller()
+        self.package = {"z2": None, "mu0": None, "x": None}
 
     def run(self):
         opt = tf.optimizers.Adam()
@@ -25,13 +25,7 @@ class GNCNProcess(mp.Process):
                 clamped_vars=[("z0", "z", inp)],
                 readout_vars=[("mu0", "phi(z)"),("z2", "phi(z)")]
             )
-            mu0 = readouts[0][2].numpy()
-            z2 = readouts[1][2].numpy()
-            # print(z2)
-            # self.snd.send([[mu0[0][0]], [mu0[0][1]]])
-            # self.snd.send(readouts)
             inp = self.mouse.position
-            # self.snd_sc.send(inp)
             inp = ([inp[0]/1000], [-inp[1]/1000])
             self.package_and_send(readouts, inp)
             for p in range(len(delta)):
@@ -49,8 +43,10 @@ class GNCNProcess(mp.Process):
     def package_and_send(self, readouts, input):
         mu0 = readouts[0][2].numpy()
         z2 = readouts[1][2].numpy()
-        package = {"z2":([z2[0][0]], [z2[0][1]]), "mu0": ([mu0[0][0]], [mu0[0][1]]), "x": input}
-        self.snd.send(package)
+        self.package["z2"] = ([z2[0][0]], [z2[0][1]])
+        self.package["mu0"] = ([mu0[0][0]], [mu0[0][1]])
+        self.package["x"] = input
+        self.snd.send(self.package)
         
 
 
