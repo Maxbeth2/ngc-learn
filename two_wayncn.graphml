@@ -19,89 +19,177 @@
       <data key="d3">14px arial</data>
     </node>
     <node id="1">
-      <data key="d0">col</data>
+      <data key="d0">lat_col</data>
       <data key="d1">gainsboro</data>
       <data key="d2">ellipse</data>
       <data key="d3">14px arial</data>
     </node>
     <node id="2">
-      <data key="d0">pos</data>
+      <data key="d0">lat_pos</data>
       <data key="d1">gainsboro</data>
       <data key="d2">ellipse</data>
       <data key="d3">14px arial</data>
     </node>
     <node id="3">
-      <data key="d0">col_mu</data>
+      <data key="d0">col</data>
       <data key="d1">gainsboro</data>
       <data key="d2">ellipse</data>
       <data key="d3">14px arial</data>
     </node>
     <node id="4">
-      <data key="d0">pos_mu</data>
+      <data key="d0">pos</data>
       <data key="d1">gainsboro</data>
       <data key="d2">ellipse</data>
       <data key="d3">14px arial</data>
     </node>
     <node id="5">
+      <data key="d0">lat_col_mu</data>
+      <data key="d1">gainsboro</data>
+      <data key="d2">ellipse</data>
+      <data key="d3">14px arial</data>
+    </node>
+    <node id="6">
+      <data key="d0">lat_pos_mu</data>
+      <data key="d1">gainsboro</data>
+      <data key="d2">ellipse</data>
+      <data key="d3">14px arial</data>
+    </node>
+    <node id="7">
+      <data key="d0">col_mu</data>
+      <data key="d1">gainsboro</data>
+      <data key="d2">ellipse</data>
+      <data key="d3">14px arial</data>
+    </node>
+    <node id="8">
+      <data key="d0">pos_mu</data>
+      <data key="d1">gainsboro</data>
+      <data key="d2">ellipse</data>
+      <data key="d3">14px arial</data>
+    </node>
+    <node id="9">
+      <data key="d0">lc_e</data>
+      <data key="d1">mistyrose</data>
+      <data key="d2">ellipse</data>
+      <data key="d3">16px arial black</data>
+    </node>
+    <node id="10">
+      <data key="d0">lp_e</data>
+      <data key="d1">mistyrose</data>
+      <data key="d2">ellipse</data>
+      <data key="d3">16px arial black</data>
+    </node>
+    <node id="11">
       <data key="d0">col_e</data>
       <data key="d1">mistyrose</data>
       <data key="d2">ellipse</data>
       <data key="d3">16px arial black</data>
     </node>
-    <node id="6">
+    <node id="12">
       <data key="d0">pos_e</data>
       <data key="d1">mistyrose</data>
       <data key="d2">ellipse</data>
       <data key="d3">16px arial black</data>
     </node>
-    <edge source="0" target="3">
-      <data key="d4">lat-to-col_mu_dense</data>
+    <edge source="0" target="5">
+      <data key="d4">lat-to-lat_col_mu_dense</data>
       <data key="d5">3</data>
       <data key="d6">3</data>
       <data key="d7">red</data>
     </edge>
-    <edge source="0" target="4">
-      <data key="d4">lat-to-pos_mu_dense</data>
+    <edge source="0" target="6">
+      <data key="d4">lat-to-lat_pos_mu_dense</data>
       <data key="d5">3</data>
       <data key="d6">3</data>
       <data key="d7">red</data>
     </edge>
-    <edge source="1" target="5">
+    <edge source="1" target="7">
+      <data key="d4">lat_col-to-col_mu_dense</data>
+      <data key="d5">3</data>
+      <data key="d6">3</data>
+      <data key="d7">red</data>
+    </edge>
+    <edge source="1" target="9">
+      <data key="d4">lat_col-to-lc_e_simple</data>
+      <data key="d8">1.5</data>
+      <data key="d9">1.5</data>
+      <data key="d7">blue</data>
+      <data key="d10">True</data>
+    </edge>
+    <edge source="2" target="8">
+      <data key="d4">lat_pos-to-pos_mu_dense</data>
+      <data key="d5">3</data>
+      <data key="d6">3</data>
+      <data key="d7">red</data>
+    </edge>
+    <edge source="2" target="10">
+      <data key="d4">lat_pos-to-lp_e_simple</data>
+      <data key="d8">1.5</data>
+      <data key="d9">1.5</data>
+      <data key="d7">blue</data>
+      <data key="d10">True</data>
+    </edge>
+    <edge source="3" target="11">
       <data key="d4">col-to-col_e_simple</data>
       <data key="d8">1.5</data>
       <data key="d9">1.5</data>
       <data key="d7">blue</data>
       <data key="d10">True</data>
     </edge>
-    <edge source="2" target="6">
+    <edge source="4" target="12">
       <data key="d4">pos-to-pos_e_simple</data>
       <data key="d8">1.5</data>
       <data key="d9">1.5</data>
       <data key="d7">blue</data>
       <data key="d10">True</data>
     </edge>
-    <edge source="3" target="5">
+    <edge source="5" target="9">
+      <data key="d4">lat_col_mu-to-lc_e_simple</data>
+      <data key="d8">1.5</data>
+      <data key="d9">1.5</data>
+      <data key="d7">blue</data>
+      <data key="d10">True</data>
+    </edge>
+    <edge source="6" target="10">
+      <data key="d4">lat_pos_mu-to-lp_e_simple</data>
+      <data key="d8">1.5</data>
+      <data key="d9">1.5</data>
+      <data key="d7">blue</data>
+      <data key="d10">True</data>
+    </edge>
+    <edge source="7" target="11">
       <data key="d4">col_mu-to-col_e_simple</data>
       <data key="d8">1.5</data>
       <data key="d9">1.5</data>
       <data key="d7">blue</data>
       <data key="d10">True</data>
     </edge>
-    <edge source="4" target="6">
+    <edge source="8" target="12">
       <data key="d4">pos_mu-to-pos_e_simple</data>
       <data key="d8">1.5</data>
       <data key="d9">1.5</data>
       <data key="d7">blue</data>
       <data key="d10">True</data>
     </edge>
-    <edge source="5" target="0">
-      <data key="d4">col_e-to-lat_dense</data>
+    <edge source="9" target="0">
+      <data key="d4">lc_e-to-lat_dense</data>
       <data key="d5">3</data>
       <data key="d6">3</data>
       <data key="d7">blue</data>
     </edge>
-    <edge source="6" target="0">
-      <data key="d4">pos_e-to-lat_dense</data>
+    <edge source="10" target="0">
+      <data key="d4">lp_e-to-lat_dense</data>
+      <data key="d5">3</data>
+      <data key="d6">3</data>
+      <data key="d7">blue</data>
+    </edge>
+    <edge source="11" target="1">
+      <data key="d4">col_e-to-lat_col_dense</data>
+      <data key="d5">3</data>
+      <data key="d6">3</data>
+      <data key="d7">blue</data>
+    </edge>
+    <edge source="12" target="2">
+      <data key="d4">pos_e-to-lat_pos_dense</data>
       <data key="d5">3</data>
       <data key="d6">3</data>
       <data key="d7">blue</data>
