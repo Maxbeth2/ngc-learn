@@ -26,6 +26,7 @@ def build_two_way():
 
     lat_cc = cc.O1_dense().Op1_with_update_rule(latent_vec, col_e).O0_connect(latent_vec, col_mu)
     cc.O1_mirror(lat_cc).O0_connect(col_e, latent_vec)
+    
     lat_pc = cc.O1_dense().Op1_with_update_rule(latent_vec, pos_e).O0_connect(latent_vec, pos_mu)
     cc.O1_mirror(lat_pc).O0_connect(pos_e, latent_vec)
 
@@ -34,7 +35,7 @@ def build_two_way():
 
     from ngclearn.engine.ngc_graph import NGCGraph
 
-    model = NGCGraph(K=20)
+    model = NGCGraph(K=10)
     model.set_cycle([latent_vec, col, pos])
     model.set_cycle([col_mu, pos_mu])
     model.set_cycle([col_e, pos_e])
@@ -103,7 +104,7 @@ def build_deep_two_way():
 
     from ngclearn.engine.ngc_graph import NGCGraph
 
-    model = NGCGraph(K=20)
+    model = NGCGraph(K=10)
     model.set_cycle([latent_vec, lat_col, lat_pos, col, pos])
     model.set_cycle([lat_col_mu, lat_pos_mu, col_mu, pos_mu])
     model.set_cycle([lat_col_e, lat_pos_e, col_e, pos_e])

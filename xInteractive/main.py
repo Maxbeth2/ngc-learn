@@ -16,13 +16,14 @@ def help():
 if __name__ == '__main__':
     
     rec_pts, snd_pts = mp.Pipe()
-    r_sc, s_sc = mp.Pipe()
+    rec_sc, snd_sc = mp.Pipe()
     rec_mm, snd_mm = mp.Pipe()
+    rec_comm, snd_comm = mp.Pipe()
     # rp = RemotePlotter(rec_pts, 40)
-    rp = MultimodalMonitor(rec_pts, snd_mm, 40)
+    rp = MultimodalMonitor(inbox=rec_pts, commands=snd_comm, outbox=snd_mm, framerate=40)
     # ncn = GNCNProcess(snd_pts)
-    ncn = InteractiveMultimodal(snd_pts, rec_mm)
-    synth = SCComm(r_sc)
+    ncn = InteractiveMultimodal(send_pts=snd_pts, rec_mm=rec_mm, rec_comm=rec_comm)
+    synth = SCComm(rec_sc)
     rp.start()
     ncn.start()
     synth.start()
