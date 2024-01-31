@@ -65,7 +65,7 @@ def build_deep_two_way():
     lat_col_e = ENode("lc_e", dim=latent_dim)
     lat_col_mu = _bd.O0_build("lat_col_mu", dim=latent_dim)
 
-    latent_vec = _bd.O0_build("lat", dim=latent_dim)
+    latent_vec = _bd.Op1_with_prior().O0_build("lat", dim=latent_dim)
 
     lat_pos_mu = _bd.O0_build("lat_pos_mu", dim=latent_dim)
     lat_pos_e = ENode("lp_e", dim=latent_dim)
@@ -104,7 +104,7 @@ def build_deep_two_way():
 
     from ngclearn.engine.ngc_graph import NGCGraph
 
-    model = NGCGraph(K=10)
+    model = NGCGraph(K=15)
     model.set_cycle([latent_vec, lat_col, lat_pos, col, pos])
     model.set_cycle([lat_col_mu, lat_pos_mu, col_mu, pos_mu])
     model.set_cycle([lat_col_e, lat_pos_e, col_e, pos_e])

@@ -141,7 +141,7 @@ class CableConnector:
     default setting:
         "type": "dense"
         "init_kernels": {"A_init": ("gaussian", 0.025)}
-        "seed": 69
+        "seed": 42
         "coeff": None
     """
     class SComps(Enum):
