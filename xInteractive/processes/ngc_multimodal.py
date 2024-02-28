@@ -8,13 +8,15 @@ from ngclearn.utils import io_utils
 from pynput.mouse import Controller
 
 class InteractiveMultimodal(mp.Process):
-    def __init__(self, send_pts, rec_mm, rec_comm):
+    def __init__(self, send_pts, rec_mm, rec_comm, modelPath=None):
         mp.Process.__init__(self)
         self.outbox = send_pts
         self.inbox = rec_mm
         self.rec_comm = rec_comm
-        # self.model = build_deep_two_way()
-        self.model = io_utils.deserialize("xInteractive\saved_models\mm10770_noisy_rand.ngc")
+        if modelPath == None:
+            self.model = build_deep_two_way()
+        else:
+            self.model = io_utils.deserialize(modelPath)
         self.mouse = Controller()
         self.pos = tf.zeros([1,2])
         self.col = tf.zeros([1,3])
@@ -24,10 +26,12 @@ class InteractiveMultimodal(mp.Process):
 
 
     def run(self):
+    
         self.opt = tf.optimizers.Adam()
         self.ones = tf.ones([1,2])
         self.inbox : Connection
         self.rec_comm : Connection
+        
         while True:
             self.check_GUI_commands()
             # receive inputs
