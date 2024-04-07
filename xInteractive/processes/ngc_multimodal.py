@@ -13,10 +13,15 @@ class InteractiveMultimodal(mp.Process):
         self.outbox = send_pts
         self.inbox = rec_mm
         self.rec_comm = rec_comm
+<<<<<<< Updated upstream
         if modelPath == None:
             self.model = build_deep_two_way()
         else:
             self.model = io_utils.deserialize(modelPath)
+=======
+        self.model = build_deep_two_way()
+        # self.model = io_utils.deserialize("xInteractive\saved_models\mm10770_noisy_rand.ngc")
+>>>>>>> Stashed changes
         self.mouse = Controller()
         self.pos = tf.zeros([1,2])
         self.col = tf.zeros([1,3])

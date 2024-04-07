@@ -2,6 +2,7 @@ import multiprocessing as mp
 import multiprocessing.connection as mpc
 from supercollider import Server, Synth
 from pynput.mouse import Controller
+
 class SCComm(mp.Process):
     def __init__(self, rec_pos):
         mp.Process.__init__(self)
